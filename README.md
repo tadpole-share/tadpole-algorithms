@@ -1,11 +1,8 @@
-# jupyter
-https://github.com/tadpole-share/jupyter
+# Tadpole algorithms
 
-## Setup
-- use [miniconda3](https://docs.conda.io/en/latest/miniconda.html)
-- make sure miniconda bin path is in $PATH
-- conda env create -f environment.yml
-- conda activate tadpole
-- conda install -c conda-forge -n tadpole -y jupyterlab ipywidgets widgetsnbextension nodejs psutil
-- jupyter labextension install @jupyter-widgets/jupyterlab-manager
-- jupyter lab
+If you would like to use the algorithms, install this library using pip:
+
+- `pip install git+https://github.com/tadpole-share/tadpole-algorithms`
+
+See [https://github.com/tadpole-share/jupyter](https://github.com/tadpole-share/jupyter) for example Jupyter notebooks.
+
