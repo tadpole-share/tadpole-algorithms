@@ -10,6 +10,13 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/tadpole-share/tadpole-algorithms",
     packages=setuptools.find_packages(),
+    install_requires=[
+      'numpy',
+      'pandas',
+      'scikit-learn',
+      'scipy',
+      'tqdm'
+    ],
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: Apache 2.0",

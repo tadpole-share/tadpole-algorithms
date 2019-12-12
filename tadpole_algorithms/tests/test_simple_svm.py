@@ -2,7 +2,7 @@ from pathlib import Path
 import datetime
 import pandas as pd
 
-from tadpole.models import SimpleSVM
+from tadpole_algorithms.models import SimpleSVM
 
 
 def test_simple_svm():

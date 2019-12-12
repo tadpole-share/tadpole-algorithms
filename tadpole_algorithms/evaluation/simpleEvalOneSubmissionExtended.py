@@ -7,9 +7,9 @@ from evaluation import MAUC
 import argparse
 from sklearn.metrics import confusion_matrix
 
-from tadpole.transformations import convert_to_year_month, \
+from tadpole_algorithms.transformations import convert_to_year_month, \
     convert_to_year_month_day, map_string_diagnosis
-from tadpole.metrics import mean_abs_error, weighted_error_score, cov_prob_acc
+from tadpole_algorithms.metrics import mean_abs_error, weighted_error_score, cov_prob_acc
 
 
 def calcBCA(estimLabels, trueLabels, nrClasses):

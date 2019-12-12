@@ -12,7 +12,7 @@ from sklearn.utils import resample
 
 from tqdm.auto import tqdm
 
-from tadpole.models.tadpole_model import TadpoleModel
+from tadpole_algorithms.models.tadpole_model import TadpoleModel
 
 
 logger = logging.getLogger(__name__)
