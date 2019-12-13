@@ -5,6 +5,10 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 
 import logging
+
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
+
 logger = logging.getLogger(__name__)
 
 
@@ -89,6 +93,7 @@ class SimpleSVM:
         # select last row per RID
         test_df = test_df.sort_values(by=['EXAMDATE'])
         test_df = test_df.groupby('RID').tail(1)
+        exam_dates = test_df['EXAMDATE']
 
         test_df = self.preprocess(test_df)
         rids = test_df['RID']
@@ -107,8 +112,13 @@ class SimpleSVM:
         ventricles_prediction = self.adas_model.predict(test_df)
         ventricles_ci = np.zeros(len(ventricles_prediction))
 
+        def add_months_to_str_date(strdate, months=1):
+            return (datetime.strptime(strdate, '%Y-%m-%d') + relativedelta(months=months)).strftime('%Y-%m-%d')
+
         df = pd.DataFrame.from_dict({
-            'rid': rids,
+            'RID': rids,
+            'month': 1,
+            'Forecast Date': list(map(lambda x: add_months_to_str_date(x, 1), exam_dates.tolist())),
             'CN relative probability': diag_probas.T[0],
             'MCI relative probability': diag_probas.T[1],
             'AD relative probability': diag_probas.T[2],
@@ -123,10 +133,11 @@ class SimpleSVM:
         })
 
         # copy each row for each month
-        df_copy = df.copy()
-        new_df = df
-        for i in range(0, 12*4):
+        new_df = df.copy()
+        for i in range(2, 12 * 10):
+            df_copy = df.copy()
             df_copy['month'] = i
+            df_copy['Forecast Date'] = df_copy['Forecast Date'].map(lambda x: add_months_to_str_date(x, i - 1))
             new_df = new_df.append(df_copy)
 
         return new_df

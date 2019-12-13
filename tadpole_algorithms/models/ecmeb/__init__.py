@@ -14,6 +14,8 @@ from tqdm.auto import tqdm
 
 from tadpole_algorithms.models.tadpole_model import TadpoleModel
 
+from datetime import datetime
+from dateutil.relativedelta import relativedelta
 
 logger = logging.getLogger(__name__)
 
@@ -55,8 +57,7 @@ class ECMEB(TadpoleModel):
         train_df_diagnosis (pandas.DataFrame): Training data used for 'diagnosis' model.
     """
 
-
-    def __init__(self):
+    def __init__(self, confidence_intervals=True):
         self.diagnosis_model = Pipeline([
             ('scaler', StandardScaler()),
             ('classifier', svm.SVC(kernel='rbf', C=0.5, gamma='auto', class_weight='balanced', probability=True)),
@@ -77,6 +78,8 @@ class ECMEB(TadpoleModel):
         self.train_df_diagnosis = None
         self.train_df_adas = None
         self.train_df_ventricles = None
+
+        self.confidence_intervals = confidence_intervals
 
     @staticmethod
     def preprocess(train_df: pd.DataFrame):
@@ -194,7 +197,7 @@ class ECMEB(TadpoleModel):
         # select last row per RID
         test_df = test_df.sort_values(by=['EXAMDATE'])
         test_df = test_df.groupby('RID').tail(1)
-
+        exam_dates = test_df['EXAMDATE']
         test_df = self.preprocess(test_df)
         rids = test_df['RID']
         test_df = test_df.drop(['RID'], axis=1)
@@ -202,27 +205,35 @@ class ECMEB(TadpoleModel):
 
         diag_probas = self.diagnosis_model.predict_proba(test_df)
         adas_prediction = self.adas_model.predict(test_df)
-
-        logger.info("Bootstrap adas")
-        adas_ci = bootstrap(
-            self.adas_model,
-            self.train_df_adas,
-            self.y_adas,
-            test_df
-        )
-
         ventricles_prediction = self.adas_model.predict(test_df)
-        logger.info("Bootstrap ventricles")
-        ventricles_ci = bootstrap(
-            self.ventricles_model,
-            self.train_df_ventricles,
-            self.y_ventricles,
-            test_df
-        )
 
+        if self.confidence_intervals:
+            logger.info("Bootstrap adas")
+            adas_ci = bootstrap(
+                self.adas_model,
+                self.train_df_adas,
+                self.y_adas,
+                test_df
+            )
+
+            logger.info("Bootstrap ventricles")
+            ventricles_ci = bootstrap(
+                self.ventricles_model,
+                self.train_df_ventricles,
+                self.y_ventricles,
+                test_df
+            )
+        else:
+            adas_ci = ventricles_ci = 0
+
+
+        def add_months_to_str_date(strdate, months=1):
+            return (datetime.strptime(strdate, '%Y-%m-%d') + relativedelta(months=months)).strftime('%Y-%m-%d')
 
         df = pd.DataFrame.from_dict({
-            'rids': rids,
+            'RID': rids,
+            'month': 1,
+            'Forecast Date': list(map(lambda x: add_months_to_str_date(x, 1), exam_dates.tolist())),
             'CN relative probability': diag_probas.T[0],
             'MCI relative probability': diag_probas.T[1],
             'AD relative probability': diag_probas.T[2],
@@ -237,10 +248,11 @@ class ECMEB(TadpoleModel):
         })
 
         # copy each row for each month
-        df_copy = df.copy()
-        new_df = df
-        for i in range(0, 12 * 4):
+        new_df = df.copy()
+        for i in range(2, 12 * 10):
+            df_copy = df.copy()
             df_copy['month'] = i
+            df_copy['Forecast Date'] = df_copy['Forecast Date'].map(lambda x: add_months_to_str_date(x, i-1))
             new_df = new_df.append(df_copy)
 
         return new_df

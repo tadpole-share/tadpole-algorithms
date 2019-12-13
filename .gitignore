@@ -2,3 +2,4 @@
 __pychache__
 *.pyc
 .ipynb_checkpoints
+.idea
