@@ -33,8 +33,9 @@ date-released: 2019-12-13
 keywords:
   - "Machine learning"
   - "Dementia prediction"
+doi: "10.5281/zenodo.3574581"
 license: "Apache-2.0"
 message: "If you use this software, please cite it using these metadata."
 title: "TADPOLE-SHARE Algorithms"
-version: "1.0.0"
+version: "1.0.1"
 ...
