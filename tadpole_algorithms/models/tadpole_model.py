@@ -3,11 +3,11 @@ from abc import ABC, abstractmethod
 
 class TadpoleModel(ABC):
     @abstractmethod
-    def train(self, train_set_path):
+    def train(self, train_df):
         pass
 
     @abstractmethod
-    def predict(self, test_set_path):
+    def predict(self, test_df):
         pass
 
     def save(self, path):

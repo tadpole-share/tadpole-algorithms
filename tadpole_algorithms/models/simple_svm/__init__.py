@@ -71,8 +71,7 @@ class SimpleSVM:
         train_df = train_df.drop(train_df.groupby('RID').tail(1).index.values)
         return train_df
 
-    def train(self, train_set_path):
-        train_df = pd.read_csv(train_set_path)
+    def train(self, train_df):
         train_df = self.preprocess(train_df)
         train_df = self.set_futures(train_df)
 

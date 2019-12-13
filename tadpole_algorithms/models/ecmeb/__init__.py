@@ -156,8 +156,7 @@ class ECMEB(TadpoleModel):
         train_df[df_filled_nans.columns] = df_filled_nans
         return train_df
 
-    def train(self, train_set_path):
-        train_df = pd.read_csv(train_set_path)
+    def train(self, train_df):
         train_df = self.preprocess(train_df)
         futures = self.get_futures(train_df)
 
