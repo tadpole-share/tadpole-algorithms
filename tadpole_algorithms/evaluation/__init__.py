@@ -35,7 +35,7 @@ def calcBCA(estimLabels, trueLabels, nrClasses):
     return np.mean(bcaAll)
 
 
-def parseData(d4Df, forecastDf, diagLabels):
+def parseData(d4Df, forecastDf):
     trueDiag = d4Df['Diagnosis']
     trueADAS = d4Df['ADAS13']
     trueVents = d4Df['Ventricles']
@@ -164,23 +164,43 @@ def evaluate_forecast(d4Df, forecastDf):
     forecastDf['Forecast Date'] = [datetime.strptime(x, '%Y-%m-%d') for x in forecastDf['Forecast Date']]
     # todo: considers every month estimate to be the actual first day 2017-01
 
-    d4Df['CognitiveAssessmentDate'] = [datetime.strptime(x, '%Y-%m-%d') for x in d4Df['CognitiveAssessmentDate']]
-    d4Df['ScanDate'] = [datetime.strptime(x, '%Y-%m-%d') for x in d4Df['ScanDate']]
-    mapping = {'CN': 0, 'MCI': 1, 'AD': 2}
-    d4Df.replace({'Diagnosis': mapping}, inplace=True)
+    # d4Df['CognitiveAssessmentDate'] = [datetime.strptime(x, '%Y-%m-%d') for x in d4Df['CognitiveAssessmentDate']]
+    d4Df['CognitiveAssessmentDate'] = [datetime.strptime(x, '%Y-%m-%d') for x in d4Df['EXAMDATE']]
+    d4Df['ScanDate'] = [datetime.strptime(x, '%Y-%m-%d') for x in d4Df['EXAMDATE']]
 
-    diagLabels = ['CN', 'MCI', 'AD']
+    # todo: Check mapping
+    if 'Diagnosis' not in d4Df.columns:
+        d4Df = d4Df.replace({'DXCHANGE': {
+            1: 'CN',
+            2: 'MCI',
+            3: 'AD',
+            4: 'MCI',
+            5: 'AD',
+            6: 'AD',
+            7: 'CN',
+            8: 'MCI',
+            9: 'CN'
+        }})
+        d4Df = d4Df.replace({'DXCHANGE': {
+            'CN': 0,
+            'MCI': 1,
+            'AD': 2,
+        }})
+        d4Df = d4Df.rename(columns={"DXCHANGE": "Diagnosis"})
+
+    # diagLabels = ['CN', 'MCI', 'AD']
 
     zipTrueLabelAndProbs, hardEstimClass, adasEstim, adasEstimLo, adasEstimUp, \
     ventriclesEstim, ventriclesEstimLo, ventriclesEstimUp, trueDiagFilt, trueADASFilt, trueVentsFilt = \
-        parseData(d4Df, forecastDf, diagLabels)
+        parseData(d4Df, forecastDf)
     zipTrueLabelAndProbs = list(zipTrueLabelAndProbs)
 
     ########## compute metrics for the clinical status #############
 
     ##### Multiclass AUC (mAUC) #####
 
-    nrClasses = len(diagLabels)
+    nrClasses = 3
+    # len(diagLabels)
     mAUC = MAUC.MAUC(zipTrueLabelAndProbs, num_classes=nrClasses)
 
     ### Balanced Classification Accuracy (BCA) ###

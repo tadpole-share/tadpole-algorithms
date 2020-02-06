@@ -2,11 +2,11 @@ from pathlib import Path
 import datetime
 import pandas as pd
 
-from tadpole_algorithms.models import SimpleSVM
+from tadpole_algorithms.models import BenchmarkSVM
 
 
 def test_simple_svm():
-    model = SimpleSVM()
+    model = BenchmarkSVM()
     model.train(Path('data/train_short.csv'))
     test_set_path = Path('data/tadpole_test_set.csv')
     test_set_df = pd.read_csv(test_set_path)

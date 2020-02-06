@@ -2,7 +2,7 @@ from pathlib import Path
 import datetime
 import pandas as pd
 
-from tadpole_algorithms.models.ecmeb import ECMEB
+from tadpole_algorithms.models.emceb import ECMEB
 
 
 def test_ecmeb():

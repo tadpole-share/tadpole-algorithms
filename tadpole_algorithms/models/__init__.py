@@ -1,3 +1,3 @@
-from .ecmeb import ECMEB
-from .simple_svm import SimpleSVM
+from .emceb import EMCEB
+from .bechmark_svm import BenchmarkSVM
 from .benchmark_last_visit import BenchmarkLastVisit

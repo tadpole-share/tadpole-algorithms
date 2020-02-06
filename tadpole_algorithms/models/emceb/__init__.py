@@ -40,8 +40,8 @@ def bootstrap(model, train_df, y_df, test_df, n_bootstraps: int = 100, confidenc
     return h
 
 
-class ECMEB(TadpoleModel):
-    """ECM-EB method, Esther Bron - e.bron@erasmusmc.nl
+class EMCEB(TadpoleModel):
+    """EMC-EB method, Esther Bron - e.bron@erasmusmc.nl
 
     The `train_df*` attributes contain training data optimized for each variable.
 
@@ -122,14 +122,14 @@ class ECMEB(TadpoleModel):
         if 'Ventricles_ICV' not in train_df.columns:
             train_df["Ventricles_ICV"] = train_df["Ventricles"].values / train_df["ICV_bl"].values
 
-        """Select features based on ECMEB_features.csv file"""
-        selected_features = pd.read_csv(Path(__file__).parent / 'ECMEB_features.csv')['feature'].values.tolist()
+        """Select features based on EMCEB_features.csv file"""
+        selected_features = pd.read_csv(Path(__file__).parent / 'EMCEB_features.csv')['feature'].values.tolist()
         selected_features = selected_features[0:200]
         selected_features += ['RID', 'Diagnosis', 'Ventricles_ICV']
         selected_features = set(selected_features)
         train_df = train_df.copy()[selected_features]
 
-        train_df = ECMEB.fill_nans_by_older_values(train_df)
+        train_df = EMCEB.fill_nans_by_older_values(train_df)
 
         return train_df
 

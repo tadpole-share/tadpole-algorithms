@@ -2,7 +2,7 @@ from pathlib import Path
 import datetime
 import pandas as pd
 
-from tadpole_algorithms.models import SimpleSVM
+from tadpole_algorithms.models import BenchmarkSVM
 from tadpole_algorithms.models.docker_test import DockerTestModel
 
 

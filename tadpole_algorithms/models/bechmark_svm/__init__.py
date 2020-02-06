@@ -12,7 +12,7 @@ from dateutil.relativedelta import relativedelta
 logger = logging.getLogger(__name__)
 
 
-class SimpleSVM:
+class BenchmarkSVM:
     def __init__(self):
         self.diagnosis_model = Pipeline([
             ('scaler', StandardScaler()),
