@@ -1,32 +1,27 @@
 import numpy as np
 
-
-def split_test_train(df, fraction, random_seed=0):
+def split_test_train(df_train_test, df_eval, random_seed=0):
     """
     Split a dataframe into three parts: train, test & evaluation
-    Splits by random sampling patients (RIDs) from df;
-    n_patients_in_test_set = n_patients * fraction
+    Train: patients (RIDs) from D1,D2 ADNI Data sets
+    Test: roll-over patients (RIDs) from D1,D2 ADNI Data sets that are in D4
+    Eval: D4 ADNI Data set
     """
 
-    # ids = df['RID'].unique()
     # get only patient IDs with at least 2 rows per patient (required for test/eval set)
-    ids = df.groupby('RID').filter(lambda x: len(x) > 1)['RID'].unique()
+    ids = df_train_test.groupby('RID').filter(lambda x: len(x) > 1)['RID'].unique()
+    
+    train_df = df_train_test[df_train_test['RID'].isin(ids)]
+        
+    # get last row per RID
+    df_train_test = df_train_test.groupby('RID').tail(1)
 
-    # how many patients for test / eval data
-    len_subsample = int(len(ids) * fraction)
+    # select all records where RID is in d4.
+    test_df = df_train_test[
+        df_train_test['RID'].isin(df_eval['RID'].unique())
+    ]
 
-    np.random.seed(random_seed)
-    subsample_rids = np.random.choice(ids, len_subsample, replace=False)
-
-    df = df.sort_values(by=['RID', 'Years_bl'])
-
-    test_eval_df = df[df['RID'].isin(subsample_rids)]
-    train_df = df[~df['RID'].isin(subsample_rids)]
-
-    last_row_indices = test_eval_df.groupby('RID').tail(1).index.values
-
-    eval_df = test_eval_df[test_eval_df.index.isin(last_row_indices)]
-    test_df = test_eval_df[~test_eval_df.index.isin(last_row_indices)]
+    eval_df = df_eval
 
     return train_df, test_df, eval_df
 
