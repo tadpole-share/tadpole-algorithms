@@ -30,7 +30,7 @@ def split_test_train_tadpole(df_train_test, df_eval, random_seed=0):
     return train_df, test_df, eval_df
 
 
-def split_test_train_D3(df_train_test, df_test, df_eval, random_seed=0):
+def split_test_train_d3(df_train_test, df_test, df_eval, random_seed=0):
     """
     Split a dataframe into three parts: train, test and evaluation
     Data set used for train is D1D2, for test D3 and D4 for evalution
