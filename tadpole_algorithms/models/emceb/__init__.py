@@ -204,7 +204,7 @@ class EMCEB(TadpoleModel):
 
         diag_probas = self.diagnosis_model.predict_proba(test_df)
         adas_prediction = self.adas_model.predict(test_df)
-        ventricles_prediction = self.adas_model.predict(test_df)
+        ventricles_prediction = self.ventricles_model.predict(test_df)
 
         if self.confidence_intervals:
             logger.info("Bootstrap adas")

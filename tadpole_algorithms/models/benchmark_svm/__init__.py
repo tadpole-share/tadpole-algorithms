@@ -110,7 +110,7 @@ class BenchmarkSVM(TadpoleModel):
 
         adas_ci = np.zeros(len(adas_prediction))
 
-        ventricles_prediction = self.adas_model.predict(test_df)
+        ventricles_prediction = self.ventricles_model.predict(test_df)
         ventricles_ci = np.zeros(len(ventricles_prediction))
 
         def add_months_to_str_date(strdate, months=1):
