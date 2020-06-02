@@ -110,7 +110,7 @@ class EMCEB(TadpoleModel):
                 train_df[h[i]] = pd.to_numeric(train_df[h[i]], errors='coerce')
 
         """Sort the DataFrame per patient on age (at time of visit). This allows using observations from
-        the next row/visit to be used as a label for the previous row. (See `get_futures` method.)"""
+        the next row/visit to be used as a label for the previous row. (See `set_futures` method.)"""
         train_df = train_df.sort_values(by=['RID', 'AGE'])
 
         train_df = train_df.drop(['EXAMDATE', 'AGE', 'PTGENDER', 'PTEDUCAT', 'APOE4'], axis=1)
@@ -134,13 +134,13 @@ class EMCEB(TadpoleModel):
         return train_df
 
     @staticmethod
-    def get_futures(train_df, features=['RID', 'Diagnosis', 'ADAS13', 'Ventricles_ICV']):
+    def set_futures(train_df, features=['RID', 'Diagnosis', 'ADAS13', 'Ventricles_ICV']):
         """For each feature in `features` argument, generate a `Future_{feature}` column, that is filled
         using the next row for each patient"""
 
         futures_df = train_df[features].copy()
 
-        # Get future value from each row's next row, e.g. shift the column one up
+        # Set future value based on each row's next row, e.g. shift the column one up
         for predictor in ["Diagnosis", "ADAS13", 'Ventricles_ICV']:
             futures_df["Future_" + predictor] = futures_df[predictor].shift(-1)
 
@@ -158,7 +158,7 @@ class EMCEB(TadpoleModel):
 
     def train(self, train_df):
         train_df = self.preprocess(train_df)
-        futures = self.get_futures(train_df)
+        futures = self.set_futures(train_df)
 
         # Not part of `preprocess` because it's needed for the futures.
         train_df = train_df.drop(['RID'], axis=1)
