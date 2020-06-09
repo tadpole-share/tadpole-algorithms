@@ -33,7 +33,8 @@ class BenchmarkLastVisit:
             train_df = train_df.rename(columns={"DXCHANGE": "Diagnosis"})
 
         # Sort the dataframe based on age for each subject
-        train_df = train_df.sort_values(by=['RID', 'Years_bl'])
+        if 'Years_bl' in train_df.columns:
+            train_df = train_df.sort_values(by=['RID', 'Years_bl'])
 
         # Ventricles_ICV = Ventricles/ICV_bl. So make sure ICV_bl is not zero to avoid division by zero
         icv_bl_median = train_df['ICV_bl'].median()
