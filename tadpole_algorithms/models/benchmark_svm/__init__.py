@@ -4,6 +4,8 @@ from sklearn import svm
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 
+from tadpole_algorithms.models.tadpole_model import TadpoleModel
+
 import logging
 
 from datetime import datetime
@@ -12,7 +14,7 @@ from dateutil.relativedelta import relativedelta
 logger = logging.getLogger(__name__)
 
 
-class BenchmarkSVM:
+class BenchmarkSVM(TadpoleModel):
     def __init__(self):
         self.diagnosis_model = Pipeline([
             ('scaler', StandardScaler()),
@@ -64,7 +66,7 @@ class BenchmarkSVM:
         return train_df
 
     def set_futures(self, train_df):
-        # Get future value from each row's next row, e.g. shift the column one up
+        # Set future value based on each row's next row, e.g. shift the column one up
         for predictor in ["Diagnosis", "ADAS13", 'Ventricles_ICV']:
             train_df["Future_" + predictor] = train_df[predictor].shift(-1)
 
@@ -110,7 +112,7 @@ class BenchmarkSVM:
 
         adas_ci = np.zeros(len(adas_prediction))
 
-        ventricles_prediction = self.adas_model.predict(test_df)
+        ventricles_prediction = self.ventricles_model.predict(test_df)
         ventricles_ci = np.zeros(len(ventricles_prediction))
 
         def add_months_to_str_date(strdate, months=1):

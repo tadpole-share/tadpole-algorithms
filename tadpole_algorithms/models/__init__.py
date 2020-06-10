@@ -1,3 +1,3 @@
-from tadpole_algorithms.models.emceb import EMCEB
-from tadpole_algorithms.models.bechmark_svm import BenchmarkSVM
-from tadpole_algorithms.models.benchmark_last_visit import BenchmarkLastVisit
+from .emceb import EMCEB
+from .benchmark_svm import BenchmarkSVM
+from .benchmark_last_visit import BenchmarkLastVisit
