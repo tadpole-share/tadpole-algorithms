@@ -20,7 +20,7 @@ from dateutil.relativedelta import relativedelta
 logger = logging.getLogger(__name__)
 
 
-def bootstrap(model, train_df, y_df, test_df, n_bootstraps: int = 100, confidence=0.50) -> float:
+def bootstrap(model, train_df, y_df, test_df, n_bootstraps: int = 1, confidence=0.50) -> float:
     """Runs model `model` using different random sampled train & test splits.
 
     Returns:
@@ -92,15 +92,19 @@ class EMCEB(TadpoleModel):
             train_df = train_df.rename(columns={"DXCHANGE": "Diagnosis"})
 
         # Adds months to age
-        train_df['AGE'] += train_df['Month_bl'] / 12.
+        if 'Month_bl' in train_df.columns:
+            train_df['AGE'] += train_df['Month_bl'] / 12.
 
         # Drop columns found unimportant by feature importance ranking measure.
         h = list(train_df)
-        train_df: pd.DataFrame = train_df.drop(
-            h[1:8] + [h[9]] + h[14:17] + h[45:47] + h[53:73] + h[74:486] + h[832:838] + h[1172:1174] + \
-            h[1657:1667] + h[1895:1902] + h[1905:],
-            axis=1
-        )
+        if 'Month_bl' in train_df.columns:
+            train_df: pd.DataFrame = train_df.drop(
+                h[1:8] + [h[9]] + h[14:17] + h[45:47] + h[53:73] + h[74:486] + h[832:838] + h[1172:1174] + \
+                h[1657:1667] + h[1895:1902] + h[1905:],
+                axis=1
+            )
+        else:
+            train_df = train_df.drop(([h[1]]+h[7:11]+h[20:37], 1))
 
         h = list(train_df)
 
@@ -110,8 +114,14 @@ class EMCEB(TadpoleModel):
                 train_df[h[i]] = pd.to_numeric(train_df[h[i]], errors='coerce')
 
         """Sort the DataFrame per patient on age (at time of visit). This allows using observations from
+<<<<<<< HEAD
+        the next row/visit to be used as a label for the previous row. (See `get_futures` method.)"""
+        if 'Month_bl' in train_df.columns:
+            train_df = train_df.sort_values(by=['RID', 'AGE'])
+=======
         the next row/visit to be used as a label for the previous row. (See `set_futures` method.)"""
         train_df = train_df.sort_values(by=['RID', 'AGE'])
+>>>>>>> master
 
         train_df = train_df.drop(['EXAMDATE', 'AGE', 'PTGENDER', 'PTEDUCAT', 'APOE4'], axis=1)
 

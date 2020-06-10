@@ -1,6 +1,7 @@
 import numpy as np
+import pandas as pd
 from datetime import datetime
-from . import MAUC
+from tadpole_algorithms.evaluation import MAUC
 from sklearn.metrics import confusion_matrix
 
 
@@ -161,12 +162,18 @@ def evaluate_forecast(d4Df, forecastDf):
     # d4Df['CognitiveAssessmentDate'] = [datetime.strptime(x, '%Y-%m-%d') for x in d4Df['CognitiveAssessmentDate']]
     # d4Df['ScanDate'] = [datetime.strptime(x, '%Y-%m-%d') for x in d4Df['ScanDate']]
 
-    forecastDf['Forecast Date'] = [datetime.strptime(x, '%Y-%m-%d') for x in forecastDf['Forecast Date']]
+    forecastDf['Forecast Date'] = pd.to_datetime(forecastDf['Forecast Date'])
     # todo: considers every month estimate to be the actual first day 2017-01
 
-    # d4Df['CognitiveAssessmentDate'] = [datetime.strptime(x, '%Y-%m-%d') for x in d4Df['CognitiveAssessmentDate']]
-    d4Df['CognitiveAssessmentDate'] = [datetime.strptime(x, '%Y-%m-%d') for x in d4Df['EXAMDATE']]
-    d4Df['ScanDate'] = [datetime.strptime(x, '%Y-%m-%d') for x in d4Df['EXAMDATE']]
+    if "CognitiveAssessmentDate" in d4Df.keys():
+        d4Df['CognitiveAssessmentDate'] = pd.to_datetime(d4Df['CognitiveAssessmentDate'])
+    #elif "EXAMDATE" in d4Df.keys():
+    #    d4Df['CognitiveAssessmentDate'] = [datetime.strptime(x, '%Y-%m-%d') for x in d4Df['EXAMDATE']]
+
+    if "ScanDate" in d4Df.keys():
+        d4Df['ScanDate'] = pd.to_datetime(d4Df['ScanDate'])
+    #else:
+    #    d4Df['ScanDate'] = [datetime.strptime(x, '%Y-%m-%d') for x in d4Df['EXAMDATE']]
 
     # todo: Check mapping
     if 'Diagnosis' not in d4Df.columns:
@@ -187,6 +194,12 @@ def evaluate_forecast(d4Df, forecastDf):
             'AD': 2,
         }})
         d4Df = d4Df.rename(columns={"DXCHANGE": "Diagnosis"})
+    else:
+        d4Df = d4Df.replace({'Diagnosis': {
+            'CN': 0,
+            'MCI': 1,
+            'AD': 2,
+        }})       
 
     # diagLabels = ['CN', 'MCI', 'AD']
 
@@ -239,4 +252,24 @@ def evaluate_forecast(d4Df, forecastDf):
                            (ventriclesEstimUp > trueVentsFilt)) * 1.) / trueVentsFilt.shape[0]
     ventsCPA = np.abs(ventsCovProb - 0.5)
 
-    return mAUC, bca, adasMAE, ventsMAE, adasWES, ventsWES, adasCPA, ventsCPA, adasEstim, trueADASFilt
+    #### Dictionary of all parameters
+
+    metrics_dictionary = dict()
+    metrics_dictionary['mAUC (multiclass Area Under Curve)'] = mAUC
+    metrics_dictionary['bca (balanced classification accuracy)'] = bca
+    metrics_dictionary['adasMAE (ADAS13 Mean Aboslute Error)'] = adasMAE
+    metrics_dictionary['ventsMAE (Ventricles Mean Aboslute Error)'] = ventsMAE
+    metrics_dictionary['adasWES (ADAS13 Weighted Error Score)'] = adasWES
+    metrics_dictionary['ventsWES (Ventricles Weighted Error Score )'] = ventsWES
+    metrics_dictionary['adasCPA (ADAS13 Coverage Probability Accuracy for 50% Confidence Interval'] = adasCPA
+    metrics_dictionary['ventsCPA (Ventricles Coverage Probability Accuracy for 50% Confidence Interval'] = ventsCPA
+
+    return metrics_dictionary
+
+
+def print_metrics(dictionary):
+
+    #### Print dictionary
+
+    for key, value in dictionary.items():
+        print(key + ":", value)     

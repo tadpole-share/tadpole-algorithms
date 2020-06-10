@@ -45,7 +45,8 @@ class BenchmarkSVM(TadpoleModel):
             train_df = train_df.rename(columns={"DXCHANGE": "Diagnosis"})
 
         # Sort the dataframe based on age for each subject
-        train_df = train_df.sort_values(by=['RID', 'Years_bl'])
+        if 'Years_bl' in train_df.columns:
+            train_df = train_df.sort_values(by=['RID', 'Years_bl'])
 
         # Ventricles_ICV = Ventricles/ICV_bl. So make sure ICV_bl is not zero to avoid division by zero
         icv_bl_median = train_df['ICV_bl'].median()
@@ -92,8 +93,9 @@ class BenchmarkSVM(TadpoleModel):
         logger.info("Predicting")
 
         # select last row per RID
-        test_df = test_df.sort_values(by=['EXAMDATE'])
-        test_df = test_df.groupby('RID').tail(1)
+        if len(test_df[test_df.duplicated(['RID'])]) != 0:
+            test_df = test_df.sort_values(by=['EXAMDATE'])
+            test_df = test_df.groupby('RID').tail(1)
         exam_dates = test_df['EXAMDATE']
 
         test_df = self.preprocess(test_df)
