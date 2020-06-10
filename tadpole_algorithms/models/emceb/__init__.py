@@ -114,14 +114,8 @@ class EMCEB(TadpoleModel):
                 train_df[h[i]] = pd.to_numeric(train_df[h[i]], errors='coerce')
 
         """Sort the DataFrame per patient on age (at time of visit). This allows using observations from
-<<<<<<< HEAD
-        the next row/visit to be used as a label for the previous row. (See `get_futures` method.)"""
-        if 'Month_bl' in train_df.columns:
-            train_df = train_df.sort_values(by=['RID', 'AGE'])
-=======
         the next row/visit to be used as a label for the previous row. (See `set_futures` method.)"""
         train_df = train_df.sort_values(by=['RID', 'AGE'])
->>>>>>> master
 
         train_df = train_df.drop(['EXAMDATE', 'AGE', 'PTGENDER', 'PTEDUCAT', 'APOE4'], axis=1)
 
