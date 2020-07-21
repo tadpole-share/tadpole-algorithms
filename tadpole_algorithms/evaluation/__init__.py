@@ -8,32 +8,35 @@ from sklearn.metrics import confusion_matrix
 def calcBCA(estimLabels, trueLabels, nrClasses):
     # Balanced Classification Accuracy
 
-    bcaAll = []
-    for c0 in range(nrClasses):
-        for c1 in range(c0 + 1, nrClasses):
-            # c0 = positive class  &  c1 = negative class
-            TP = np.sum((estimLabels == c0) & (trueLabels == c0))
-            TN = np.sum((estimLabels == c1) & (trueLabels == c1))
-            FP = np.sum((estimLabels == c1) & (trueLabels == c0))
-            FN = np.sum((estimLabels == c0) & (trueLabels == c1))
+  bcaAll = []
+  for c0 in range(nrClasses):
+    # c0 can be either CTL, MCI or AD
 
-            # sometimes the sensitivity of specificity can be NaN, if the user doesn't forecast one of the classes.
-            # In this case we assume a default value for sensitivity/specificity
-            if (TP + FN) == 0:
-                sensitivity = 0.5
-            else:
-                sensitivity = (TP * 1.) / (TP + FN)
+    # one example when c0=CTL
+    # TP - label was estimated as CTL, and the true label was also CTL
+    # FP - label was estimated as CTL, but the true label was not CTL (was either MCI or AD).
+    TP = np.sum((estimLabels == c0) & (trueLabels == c0))
+    TN = np.sum((estimLabels != c0) & (trueLabels != c0))
+    FP = np.sum((estimLabels == c0) & (trueLabels != c0))
+    FN = np.sum((estimLabels != c0) & (trueLabels == c0))
 
-            if (TN + FP) == 0:
-                specificity = 0.5
-            else:
-                specificity = (TN * 1.) / (TN + FP)
+    # sometimes the sensitivity of specificity can be NaN, if the user doesn't forecast one of the classes.
+    # In this case we assume a default value for sensitivity/specificity
+    if (TP+FN) == 0:
+      sensitivity = 0.5
+    else:
+      sensitivity = (1. * TP)/(TP+FN)
 
-            bcaCurr = 0.5 * (sensitivity + specificity)
-            bcaAll += [bcaCurr]
-            # print('bcaCurr %f TP %f TN %f FP %f FN %f' % (bcaCurr, TP, TN, FP, FN))
+    if (TN+FP) == 0:
+      specificity = 0.5
+    else:
+      specificity = (1. * TN)/(TN+FP)
 
-    return np.mean(bcaAll)
+    bcaCurr = 0.5*(sensitivity+specificity)
+    bcaAll += [bcaCurr]
+    # print('bcaCurr %f TP %f TN %f FP %f FN %f' % (bcaCurr, TP, TN, FP, FN))
+
+  return np.mean(bcaAll)
 
 
 def parseData(d4Df, forecastDf):
@@ -54,7 +57,7 @@ def parseData(d4Df, forecastDf):
     ventriclesEstimUp = -1 * np.ones(nrSubj, float)  # upper margin
 
     # print('subDf.keys()', forecastDf['Forecast Date'])
-    invalidResultReturn = (None, None, None, None, None, None, None, None, None, None, None)
+    #invalidResultReturn = (None, None, None, None, None, None, None, None, None, None, None)
     invalidFlag = False
     # for each subject in D4 match the closest user forecasts
     for s in range(nrSubj):
@@ -167,13 +170,13 @@ def evaluate_forecast(d4Df, forecastDf):
 
     if "CognitiveAssessmentDate" in d4Df.keys():
         d4Df['CognitiveAssessmentDate'] = pd.to_datetime(d4Df['CognitiveAssessmentDate'])
-    #elif "EXAMDATE" in d4Df.keys():
-    #    d4Df['CognitiveAssessmentDate'] = [datetime.strptime(x, '%Y-%m-%d') for x in d4Df['EXAMDATE']]
+    elif "EXAMDATE" in d4Df.keys():
+        d4Df['CognitiveAssessmentDate'] = pd.to_datetime(d4Df['EXAMDATE'])
 
     if "ScanDate" in d4Df.keys():
         d4Df['ScanDate'] = pd.to_datetime(d4Df['ScanDate'])
-    #else:
-    #    d4Df['ScanDate'] = [datetime.strptime(x, '%Y-%m-%d') for x in d4Df['EXAMDATE']]
+    elif "EXAMDATE" in d4Df.keys():
+        d4Df['ScanDate'] = pd.to_datetime(d4Df['EXAMDATE'])
 
     # todo: Check mapping
     if 'Diagnosis' not in d4Df.columns:
@@ -272,4 +275,4 @@ def print_metrics(dictionary):
     #### Print dictionary
 
     for key, value in dictionary.items():
-        print(key + ":", value)     
+        print(key + ":", "%0.3f" % value)
