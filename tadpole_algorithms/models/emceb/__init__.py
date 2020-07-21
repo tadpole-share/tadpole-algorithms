@@ -253,7 +253,6 @@ class EMCEB(TadpoleModel):
         # test_df = self.preprocess(test_series.to_frame().T)
 
         test_df = self.test_df_processed
-        test_df = test_df.groupby('RID').tail(1)
         rids = test_df['RID']
         test_df = test_df.drop(['RID'], axis=1)
 
