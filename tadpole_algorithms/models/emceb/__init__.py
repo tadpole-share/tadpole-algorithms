@@ -58,6 +58,7 @@ class EMCEB(TadpoleModel):
     """
 
     def __init__(self, confidence_intervals=True):
+        # Note to self, to get parameters out: model.diagnosis_model.named_steps['scaler'].mean_
         self.diagnosis_model = Pipeline([
             ('scaler', StandardScaler()),
             ('classifier', svm.SVC(kernel='rbf', C=0.5, gamma='auto', class_weight='balanced', probability=True)),
@@ -106,17 +107,19 @@ class EMCEB(TadpoleModel):
         if 'Month_bl' in df.columns:
             df['AGE'] += df['Month_bl'] / 12.
             
-        # Drop columns found unimportant by feature importance ranking measure.
+        # Remove feature categories based on prior knowledge
         # If month_bl in dataframe, then it is data set D1D2, not D3
         h = list(df)
         if 'Month_bl' in df.columns:
+            remove_columns = h[1:8] + [h[9]] + h[14:17] + h[45:47] + h[53:73] + h[74:486] + h[832:838] + h[1172:1174] + \
+                h[1657:1667] + h[1895:1902] + h[1905:]
             df: pd.DataFrame = df.drop(
-                h[1:8] + [h[9]] + h[14:17] + h[45:47] + h[53:73] + h[74:486] + h[832:838] + h[1172:1174] + \
-                h[1657:1667] + h[1895:1902] + h[1905:],
+                remove_columns,
                 axis=1
             )
         else:
-            df: pd.DataFrame = df.drop([h[1]]+h[7:11]+h[20:37], 1)
+            remove_columns = [h[1]]+h[7:11]+h[20:37]
+            df: pd.DataFrame = df.drop(remove_columns, 1)
         h = list(df)
 
         logger.info('Forcing Numeric Values')
@@ -151,6 +154,7 @@ class EMCEB(TadpoleModel):
 
         if test == 'd1d2':
             """Select features based on EMCEB_features.csv file"""
+            # Drop columns found unimportant by feature importance ranking measure.
             selected_features = pd.read_csv(Path(__file__).parent / 'EMCEB_features.csv')['feature'].values.tolist()
             selected_features = selected_features[0:200]
             selected_features += ['RID', 'Diagnosis', 'Ventricles_ICV']
