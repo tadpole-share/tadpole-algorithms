@@ -216,8 +216,11 @@ class EMCEB(TadpoleModel):
         # Not part of `preprocess` because it's needed for the futures.
         train_df = train_df.drop(['RID'], axis=1)
 
-        # Fill left over nans with mean
-        train_df = train_df.fillna(train_df.mean())
+        # Fill nans by mean of training set
+        self.train_df_mean = train_df.mean()
+        train_df = train_df.fillna(self.train_df_mean)
+
+        # Fill left over nans with 0
         train_df = train_df.fillna(0)
 
         def non_nan_y(_train_df, _y_df):
@@ -250,8 +253,12 @@ class EMCEB(TadpoleModel):
         # test_df = self.preprocess(test_series.to_frame().T)
 
         test_df = self.test_df_processed
+        test_df = test_df.groupby('RID').tail(1)
         rids = test_df['RID']
         test_df = test_df.drop(['RID'], axis=1)
+
+        # Fill nans by mean of training set
+        test_df = test_df.fillna(self.train_df_mean)
         test_df = test_df.fillna(0)
 
         diag_probas = self.diagnosis_model.predict_proba(test_df)
