@@ -58,6 +58,7 @@ class EMCEB(TadpoleModel):
     """
 
     def __init__(self, confidence_intervals=True):
+        # Note to self, to get parameters out: model.diagnosis_model.named_steps['scaler'].mean_
         self.diagnosis_model = Pipeline([
             ('scaler', StandardScaler()),
             ('classifier', svm.SVC(kernel='rbf', C=0.5, gamma='auto', class_weight='balanced', probability=True)),
@@ -81,61 +82,106 @@ class EMCEB(TadpoleModel):
 
         self.confidence_intervals = confidence_intervals
 
+        self.train_df_processed = None
+        self.test_df_processed = None
+
     @staticmethod
-    def preprocess(train_df: pd.DataFrame):
+    def preprocess(df: pd.DataFrame, is_train_df: bool):
+        if not is_train_df:
+            # select last row per RID
+            df = df.sort_values(by=['EXAMDATE'])
+            df = df.groupby('RID').tail(1)
+            exam_dates = df['EXAMDATE']
+
         logger.info("Pre-processing")
-        train_df = train_df.copy()
-        if 'Diagnosis' not in train_df.columns:
+
+        df = df.copy()
+
+        if 'Diagnosis' not in df.columns:
             """We want to transform 'DXCHANGE' (a change in diagnosis, in contrast
             to the previous visits diagnosis) to an actual diagnosis."""
-            train_df = train_df.replace({'DXCHANGE': {4: 2, 5: 3, 6: 3, 7: 1, 8: 2, 9: 1}})
-            train_df = train_df.rename(columns={"DXCHANGE": "Diagnosis"})
+            df = df.replace({'DXCHANGE': {4: 2, 5: 3, 6: 3, 7: 1, 8: 2, 9: 1}})
+            df = df.rename(columns={"DXCHANGE": "Diagnosis"})
 
         # Adds months to age
-        if 'Month_bl' in train_df.columns:
-            train_df['AGE'] += train_df['Month_bl'] / 12.
-
-        # Drop columns found unimportant by feature importance ranking measure.
-        h = list(train_df)
-        if 'Month_bl' in train_df.columns:
-            train_df: pd.DataFrame = train_df.drop(
-                h[1:8] + [h[9]] + h[14:17] + h[45:47] + h[53:73] + h[74:486] + h[832:838] + h[1172:1174] + \
-                h[1657:1667] + h[1895:1902] + h[1905:],
+        if 'Month_bl' in df.columns:
+            df['AGE'] += df['Month_bl'] / 12.
+            
+        # Remove feature categories based on prior knowledge
+        # If month_bl in dataframe, then it is data set D1D2, not D3
+        h = list(df)
+        if 'Month_bl' in df.columns:
+            remove_columns = h[1:8] + [h[9]] + h[14:17] + h[45:47] + h[53:73] + h[74:486] + h[832:838] + h[1172:1174] + \
+                h[1657:1667] + h[1895:1902] + h[1905:]
+            df: pd.DataFrame = df.drop(
+                remove_columns,
                 axis=1
             )
         else:
-            train_df = train_df.drop(([h[1]]+h[7:11]+h[20:37], 1))
-
-        h = list(train_df)
+            remove_columns = [h[1]]+h[7:11]+h[20:37]
+            df: pd.DataFrame = df.drop(remove_columns, 1)
+        h = list(df)
 
         logger.info('Forcing Numeric Values')
         for i in range(5, len(h)):
-            if train_df[h[i]].dtype != 'float64':
-                train_df[h[i]] = pd.to_numeric(train_df[h[i]], errors='coerce')
+            if df[h[i]].dtype != 'float64':
+                df[h[i]] = pd.to_numeric(df[h[i]], errors='coerce')
 
         """Sort the DataFrame per patient on age (at time of visit). This allows using observations from
         the next row/visit to be used as a label for the previous row. (See `set_futures` method.)"""
-        train_df = train_df.sort_values(by=['RID', 'AGE'])
-
-        train_df = train_df.drop(['EXAMDATE', 'AGE', 'PTGENDER', 'PTEDUCAT', 'APOE4'], axis=1)
+        df = df.sort_values(by=['RID', 'AGE'])
+        
+        if 'APOE4' in df.columns: 
+            df = df.drop(['EXAMDATE', 'AGE', 'PTGENDER', 'PTEDUCAT', 'APOE4'], axis=1)
+        else: 
+            df = df.drop(['EXAMDATE', 'AGE', 'PTGENDER', 'PTEDUCAT'], axis=1)
 
         # Ventricles_ICV = Ventricles/ICV_bl. So make sure ICV_bl is not zero to avoid division by zero
-        icv_bl_median = train_df['ICV_bl'].median()
-        train_df.loc[train_df['ICV_bl'] == 0, 'ICV_bl'] = icv_bl_median
+        icv_bl_median = df['ICV_bl'].median()
+        df.loc[df['ICV_bl'] == 0, 'ICV_bl'] = icv_bl_median
 
-        if 'Ventricles_ICV' not in train_df.columns:
-            train_df["Ventricles_ICV"] = train_df["Ventricles"].values / train_df["ICV_bl"].values
+        if 'Ventricles_ICV' not in df.columns:
+            df["Ventricles_ICV"] = df["Ventricles"].values / df["ICV_bl"].values
 
-        """Select features based on EMCEB_features.csv file"""
-        selected_features = pd.read_csv(Path(__file__).parent / 'EMCEB_features.csv')['feature'].values.tolist()
-        selected_features = selected_features[0:200]
-        selected_features += ['RID', 'Diagnosis', 'Ventricles_ICV']
-        selected_features = set(selected_features)
-        train_df = train_df.copy()[selected_features]
+        if not is_train_df:
+            return df, exam_dates
+        else:
+            return df
 
+    def set_data(self, train_df, test_df, train, test):
+        train_df = self.preprocess(train_df, True)
+        test_df, exam_dates = self.preprocess(test_df, False)
+
+        if test == 'd1d2':
+            """Select features based on EMCEB_features.csv file"""
+            # Drop columns found unimportant by feature importance ranking measure.
+            selected_features = pd.read_csv(Path(__file__).parent / 'EMCEB_features.csv')['feature'].values.tolist()
+            selected_features = selected_features[0:200]
+            selected_features += ['RID', 'Diagnosis', 'Ventricles_ICV']
+            selected_features = set(selected_features)
+            train_df = train_df.copy()[selected_features]
+
+            test_df = test_df.copy()[selected_features]
+
+        if test == 'd3':
+
+            test_df_copy = test_df.copy()
+            percentage = .50
+            idx_fewmissing = pd.isnull(test_df).select_dtypes(include=['bool']).sum(axis=0) < percentage*test_df.shape[0]
+            test_df = test_df.loc[:, idx_fewmissing].copy()
+            
+            test_df['RID'] = test_df_copy['RID']
+            test_df['Diagnosis'] = test_df_copy['Diagnosis']
+            test_df['Ventricles_ICV'] = test_df_copy['Ventricles_ICV']
+            
+            train_df = train_df[test_df.columns]
+            
         train_df = EMCEB.fill_nans_by_older_values(train_df)
+        test_df = EMCEB.fill_nans_by_older_values(test_df)
 
-        return train_df
+        self.train_df_processed = train_df
+        self.test_df_processed = test_df
+        self.exam_dates = exam_dates
 
     @staticmethod
     def set_futures(train_df, features=['RID', 'Diagnosis', 'ADAS13', 'Ventricles_ICV']):
@@ -160,15 +206,21 @@ class EMCEB(TadpoleModel):
         train_df[df_filled_nans.columns] = df_filled_nans
         return train_df
 
-    def train(self, train_df):
-        train_df = self.preprocess(train_df)
+    def train(self):
+        
+        assert self.train_df_processed is not None, "Data is not yet set. Use set_data to set data first"
+
+        train_df = self.train_df_processed
         futures = self.set_futures(train_df)
 
         # Not part of `preprocess` because it's needed for the futures.
         train_df = train_df.drop(['RID'], axis=1)
 
-        # Fill left over nans with mean
-        train_df = train_df.fillna(train_df.mean())
+        # Fill nans by mean of training set
+        self.train_df_mean = train_df.mean()
+        train_df = train_df.fillna(self.train_df_mean)
+
+        # Fill left over nans with 0
         train_df = train_df.fillna(0)
 
         def non_nan_y(_train_df, _y_df):
@@ -193,17 +245,19 @@ class EMCEB(TadpoleModel):
         self.adas_model.fit(self.train_df_adas, self.y_adas)
         self.ventricles_model.fit(self.train_df_ventricles, self.y_ventricles)
 
-    def predict(self, test_df):
+    def predict(self):
+
+        assert self.test_df_processed is not None, "Data is not yet set. Use set_data to set data first"
+
         logger.info("Predicting")
         # test_df = self.preprocess(test_series.to_frame().T)
 
-        # select last row per RID
-        test_df = test_df.sort_values(by=['EXAMDATE'])
-        test_df = test_df.groupby('RID').tail(1)
-        exam_dates = test_df['EXAMDATE']
-        test_df = self.preprocess(test_df)
+        test_df = self.test_df_processed
         rids = test_df['RID']
         test_df = test_df.drop(['RID'], axis=1)
+
+        # Fill nans by mean of training set
+        test_df = test_df.fillna(self.train_df_mean)
         test_df = test_df.fillna(0)
 
         diag_probas = self.diagnosis_model.predict_proba(test_df)
@@ -236,7 +290,7 @@ class EMCEB(TadpoleModel):
         df = pd.DataFrame.from_dict({
             'RID': rids,
             'month': 1,
-            'Forecast Date': list(map(lambda x: add_months_to_str_date(x, 1), exam_dates.tolist())),
+            'Forecast Date': list(map(lambda x: add_months_to_str_date(x, 1), self.exam_dates.tolist())),
             'CN relative probability': diag_probas.T[0],
             'MCI relative probability': diag_probas.T[1],
             'AD relative probability': diag_probas.T[2],
