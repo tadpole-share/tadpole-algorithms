@@ -69,12 +69,14 @@ class BenchmarkLastVisit(TadpoleModel):
         test_df = self.preprocess(test_df)
         
         # Select same columns as for traning for testing
-        test_df = test_df[["RID", "Diagnosis", "ADAS13", "Ventricles_ICV"]]
+        test_df = test_df[["RID", "Diagnosis", "ADAS13", "Ventricles", "ICV_bl", "Ventricles_ICV"]]
 
         # Default values
-        Ventricles_typical = 25000
-        Ventricles_broad_50pcMargin = 20000  # +/- (broad 50% confidence interval)
-        Ventricles_default_50pcMargin = 1000  # +/- (broad 50% confidence interval)
+        ICV_avg = 1400000 # in mm^3
+        Ventricles_typical = 25000 / ICV_avg
+        Ventricles_broad_50pcMargin = 20000 / ICV_avg # +/- (broad 50% confidence interval)
+        Ventricles_default_50pcMargin = 1000 /ICV_avg  # +/- (broad 50% confidence interval)
+
         ADAS13_typical = 12
         ADAS13_broad_50pcMargin = 10 
         ADAS13_default_50pcMargin = 1
@@ -90,7 +92,6 @@ class BenchmarkLastVisit(TadpoleModel):
             
             adas_prediction[i] = test_df.loc[test_df["RID"] == subject, "ADAS13"].dropna().values.tolist()[-1]
             if adas_prediction[i] > 0: 
-                adas_ci[i] = ADAS13_default_50pcMargin
                 adas_ci[i] = ADAS13_default_50pcMargin
             else:
                 # Subject has no history of ADAS13 measurement, so we'll take a
