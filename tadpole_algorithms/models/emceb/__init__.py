@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pandas as pd
 import scipy as sp
+import numpy as np
 from scipy import stats
 from sklearn import svm
 from sklearn.pipeline import Pipeline
@@ -184,15 +185,25 @@ class EMCEB(TadpoleModel):
         self.exam_dates = exam_dates
 
     @staticmethod
-    def set_futures(train_df, features=['RID', 'Diagnosis', 'ADAS13', 'Ventricles_ICV']):
+    def set_futures(train_df, features=['RID', 'Diagnosis', 'ADAS13', 'Ventricles_ICV', 'AGE']):
         """For each feature in `features` argument, generate a `Future_{feature}` column, that is filled
         using the next row for each patient"""
 
         futures_df = train_df[features].copy()
 
         # Set future value based on each row's next row, e.g. shift the column one up
-        for predictor in ["Diagnosis", "ADAS13", 'Ventricles_ICV']:
+        for predictor in ["Diagnosis", "ADAS13"]:
             futures_df["Future_" + predictor] = futures_df[predictor].shift(-1)
+
+        # For Ventricles we predict change per year rather dan future value
+        for predictor in ['Ventricles_ICV']:
+            futures_df["Future_" + predictor] = futures_df[predictor].shift(-1)
+
+            Change_Ventricles_ICV = futures_df[predictor].shift(-1) - futures_df[predictor]
+            Change_Age = futures_df['AGE'].shift(-1) - futures_df['AGE']
+            Change_Age[Change_Age==0]=np.nan
+            futures_df["ChangePerYear_" + predictor] = Change_Ventricles_ICV/Change_Age
+
 
         # Drop each last row per patient
         futures_df = futures_df.drop(futures_df.groupby('RID').tail(1).index.values)
