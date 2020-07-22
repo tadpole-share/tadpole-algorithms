@@ -64,6 +64,9 @@ def split_test_train_parelsnoer(df_train, df_test, df_eval, random_seed=0):
 
     # get D1 rows only
     train_df = train_df.loc[train_df['D2'] == 0]
+
+    # Drop ADAS13 column since this column is not in test_df and therefor no prediction can be done for ADAS13
+    train_df = train_df.drop(['ADAS13'], axis=1)
     
     # select all records where RID is in d4.
     test_df = df_test[
@@ -71,6 +74,7 @@ def split_test_train_parelsnoer(df_train, df_test, df_eval, random_seed=0):
     ]
 
     eval_df = df_eval
+    eval_df = eval_df.drop(['ADAS13'], axis=1)
 
     return train_df, test_df, eval_df
 

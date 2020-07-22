@@ -41,7 +41,8 @@ def calcBCA(estimLabels, trueLabels, nrClasses):
 
 def parseData(d4Df, forecastDf):
     trueDiag = d4Df['Diagnosis']
-    trueADAS = d4Df['ADAS13']
+    if "ADAS13" in d4Df.columns:
+        trueADAS = d4Df['ADAS13']
     trueVents = d4Df['Ventricles']
 
     nrSubj = d4Df.shape[0]
@@ -95,9 +96,10 @@ def parseData(d4Df, forecastDf):
 
         hardEstimClass[s] = np.argmax([pCN, pMCI, pAD])
 
-        adasEstim[s] = currSubjData['ADAS13'].iloc[indexMin]
-        adasEstimLo[s] = currSubjData['ADAS13 50% CI lower'].iloc[indexMin]
-        adasEstimUp[s] = currSubjData['ADAS13 50% CI upper'].iloc[indexMin]
+        if "ADAS13" in currSubjData.columns:
+            adasEstim[s] = currSubjData['ADAS13'].iloc[indexMin]
+            adasEstimLo[s] = currSubjData['ADAS13 50% CI lower'].iloc[indexMin]
+            adasEstimUp[s] = currSubjData['ADAS13 50% CI upper'].iloc[indexMin]
 
         # for the mri scan find the forecast closest to the scan date,
         # which might be different from the cognitive assessment date
@@ -122,11 +124,13 @@ def parseData(d4Df, forecastDf):
     trueDiagFilt = trueDiag[notNanMaskDiag]
     hardEstimClassFilt = hardEstimClass[notNanMaskDiag]
 
-    notNanMaskADAS = np.logical_not(np.isnan(trueADAS))
-    trueADASFilt = trueADAS[notNanMaskADAS]
-    adasEstim = adasEstim[notNanMaskADAS]
-    adasEstimLo = adasEstimLo[notNanMaskADAS]
-    adasEstimUp = adasEstimUp[notNanMaskADAS]
+    if "ADAS13" in forecastDf.columns:
+        notNanMaskADAS = np.logical_not(np.isnan(trueADAS))
+        trueADASFilt = trueADAS[notNanMaskADAS]
+
+        adasEstim = adasEstim[notNanMaskADAS]
+        adasEstimLo = adasEstimLo[notNanMaskADAS]
+        adasEstimUp = adasEstimUp[notNanMaskADAS]
 
     notNanMaskVents = np.logical_not(np.isnan(trueVents))
     trueVentsFilt = trueVents[notNanMaskVents]
@@ -135,12 +139,17 @@ def parseData(d4Df, forecastDf):
     ventriclesEstimUp = ventriclesEstimUp[notNanMaskVents]
 
     assert trueDiagFilt.shape[0] == hardEstimClassFilt.shape[0]
-    assert trueADASFilt.shape[0] == adasEstim.shape[0] == adasEstimLo.shape[0] == adasEstimUp.shape[0]
+    if "ADAS13" in forecastDf.columns:
+        assert trueADASFilt.shape[0] == adasEstim.shape[0] == adasEstimLo.shape[0] == adasEstimUp.shape[0]
     assert trueVentsFilt.shape[0] == ventriclesEstim.shape[0] == \
            ventriclesEstimLo.shape[0] == ventriclesEstimUp.shape[0]
 
-    return zipTrueLabelAndProbs, hardEstimClassFilt, adasEstim, adasEstimLo, adasEstimUp, \
-           ventriclesEstim, ventriclesEstimLo, ventriclesEstimUp, trueDiagFilt, trueADASFilt, trueVentsFilt
+    if "ADAS13" in forecastDf.columns:
+        return zipTrueLabelAndProbs, hardEstimClassFilt, adasEstim, adasEstimLo, adasEstimUp, \
+            ventriclesEstim, ventriclesEstimLo, ventriclesEstimUp, trueDiagFilt, trueADASFilt, trueVentsFilt
+    else:
+        return zipTrueLabelAndProbs, hardEstimClassFilt, \
+            ventriclesEstim, ventriclesEstimLo, ventriclesEstimUp, trueDiagFilt, trueVentsFilt
 
 
 def evaluate_forecast(d4Df, forecastDf):
@@ -206,9 +215,15 @@ def evaluate_forecast(d4Df, forecastDf):
 
     # diagLabels = ['CN', 'MCI', 'AD']
 
-    zipTrueLabelAndProbs, hardEstimClass, adasEstim, adasEstimLo, adasEstimUp, \
-    ventriclesEstim, ventriclesEstimLo, ventriclesEstimUp, trueDiagFilt, trueADASFilt, trueVentsFilt = \
-        parseData(d4Df, forecastDf)
+    if "ADAS13" in forecastDf.columns:
+        zipTrueLabelAndProbs, hardEstimClass, adasEstim, adasEstimLo, adasEstimUp, \
+        ventriclesEstim, ventriclesEstimLo, ventriclesEstimUp, trueDiagFilt, trueADASFilt, trueVentsFilt = \
+            parseData(d4Df, forecastDf)
+    else:
+        zipTrueLabelAndProbs, hardEstimClass, \
+        ventriclesEstim, ventriclesEstimLo, ventriclesEstimUp, trueDiagFilt, trueVentsFilt = \
+            parseData(d4Df, forecastDf)
+        
     zipTrueLabelAndProbs = list(zipTrueLabelAndProbs)
 
     ########## compute metrics for the clinical status #############
@@ -234,22 +249,23 @@ def evaluate_forecast(d4Df, forecastDf):
     ####### compute metrics for Ventricles and ADAS13 ##########
 
     #### Mean Absolute Error (MAE) #####
-
-    adasMAE = np.mean(np.abs(adasEstim - trueADASFilt))
+    if "ADAS13" in forecastDf.columns:
+        adasMAE = np.mean(np.abs(adasEstim - trueADASFilt))
     ventsMAE = np.mean(np.abs(ventriclesEstim - trueVentsFilt))
 
     ##### Weighted Error Score (WES) ####
-    adasCoeffs = 1 / (adasEstimUp - adasEstimLo)
-    adasWES = np.sum(adasCoeffs * np.abs(adasEstim - trueADASFilt)) / np.sum(adasCoeffs)
+    if "ADAS13" in forecastDf.columns:
+        adasCoeffs = 1 / (adasEstimUp - adasEstimLo)
+        adasWES = np.sum(adasCoeffs * np.abs(adasEstim - trueADASFilt)) / np.sum(adasCoeffs)
 
     ventsCoeffs = 1 / (ventriclesEstimUp - ventriclesEstimLo)
     ventsWES = np.sum(ventsCoeffs * np.abs(ventriclesEstim - trueVentsFilt)) / np.sum(ventsCoeffs)
 
     #### Coverage Probability Accuracy (CPA) ####
-
-    adasCovProb = (np.sum((adasEstimLo < trueADASFilt) &
-                          (adasEstimUp > trueADASFilt)) * 1.) / trueADASFilt.shape[0]
-    adasCPA = np.abs(adasCovProb - 0.5)
+    if "ADAS13" in forecastDf.columns:
+        adasCovProb = (np.sum((adasEstimLo < trueADASFilt) &
+                            (adasEstimUp > trueADASFilt)) * 1.) / trueADASFilt.shape[0]
+        adasCPA = np.abs(adasCovProb - 0.5)
 
     ventsCovProb = (np.sum((ventriclesEstimLo < trueVentsFilt) &
                            (ventriclesEstimUp > trueVentsFilt)) * 1.) / trueVentsFilt.shape[0]
@@ -260,11 +276,14 @@ def evaluate_forecast(d4Df, forecastDf):
     metrics_dictionary = dict()
     metrics_dictionary['mAUC (multiclass Area Under Curve)'] = mAUC
     metrics_dictionary['bca (balanced classification accuracy)'] = bca
-    metrics_dictionary['adasMAE (ADAS13 Mean Aboslute Error)'] = adasMAE
+    if "ADAS13" in forecastDf.columns:
+        metrics_dictionary['adasMAE (ADAS13 Mean Aboslute Error)'] = adasMAE
     metrics_dictionary['ventsMAE (Ventricles Mean Aboslute Error)'] = ventsMAE
-    metrics_dictionary['adasWES (ADAS13 Weighted Error Score)'] = adasWES
+    if "ADAS13" in forecastDf.columns:
+        metrics_dictionary['adasWES (ADAS13 Weighted Error Score)'] = adasWES
     metrics_dictionary['ventsWES (Ventricles Weighted Error Score )'] = ventsWES
-    metrics_dictionary['adasCPA (ADAS13 Coverage Probability Accuracy for 50% Confidence Interval'] = adasCPA
+    if "ADAS13" in forecastDf.columns:
+        metrics_dictionary['adasCPA (ADAS13 Coverage Probability Accuracy for 50% Confidence Interval'] = adasCPA
     metrics_dictionary['ventsCPA (Ventricles Coverage Probability Accuracy for 50% Confidence Interval'] = ventsCPA
 
     return metrics_dictionary
