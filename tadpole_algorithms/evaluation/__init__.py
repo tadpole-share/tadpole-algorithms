@@ -252,6 +252,7 @@ def evaluate_forecast(d4Df, forecastDf):
     if "ADAS13" in forecastDf.columns:
         adasMAE = np.mean(np.abs(adasEstim - trueADASFilt))
     ventsMAE = np.mean(np.abs(ventriclesEstim - trueVentsFilt))
+    ventsMAE = ventsMAE * 100   # Get ventsMAE in percentage
 
     ##### Weighted Error Score (WES) ####
     if "ADAS13" in forecastDf.columns:
@@ -260,6 +261,7 @@ def evaluate_forecast(d4Df, forecastDf):
 
     ventsCoeffs = 1 / (ventriclesEstimUp - ventriclesEstimLo)
     ventsWES = np.sum(ventsCoeffs * np.abs(ventriclesEstim - trueVentsFilt)) / np.sum(ventsCoeffs)
+    ventsWES = ventsWES * 100   # Get ventsWES in percentage
 
     #### Coverage Probability Accuracy (CPA) ####
     if "ADAS13" in forecastDf.columns:
@@ -272,16 +274,15 @@ def evaluate_forecast(d4Df, forecastDf):
     ventsCPA = np.abs(ventsCovProb - 0.5)
 
     #### Dictionary of all parameters
-
     metrics_dictionary = dict()
     metrics_dictionary['mAUC (multiclass Area Under Curve)'] = mAUC
     metrics_dictionary['bca (balanced classification accuracy)'] = bca
     if "ADAS13" in forecastDf.columns:
-        metrics_dictionary['adasMAE (ADAS13 Mean Aboslute Error)'] = adasMAE
-    metrics_dictionary['ventsMAE (Ventricles Mean Aboslute Error)'] = ventsMAE
+        metrics_dictionary['adasMAE (ADAS13 Mean Absolute Error)'] = adasMAE
+    metrics_dictionary['ventsMAE (Ventricles Mean Absolute Error), in % ICV'] = ventsMAE
     if "ADAS13" in forecastDf.columns:
         metrics_dictionary['adasWES (ADAS13 Weighted Error Score)'] = adasWES
-    metrics_dictionary['ventsWES (Ventricles Weighted Error Score )'] = ventsWES
+        metrics_dictionary['ventsWES (Ventricles Weighted Error Score ), in % ICV'] = ventsWES
     if "ADAS13" in forecastDf.columns:
         metrics_dictionary['adasCPA (ADAS13 Coverage Probability Accuracy for 50% Confidence Interval'] = adasCPA
     metrics_dictionary['ventsCPA (Ventricles Coverage Probability Accuracy for 50% Confidence Interval'] = ventsCPA
