@@ -2,7 +2,7 @@
 + Nguyen, M., Sun, N., Alexander D.C., Feng J., Yeo B.T.T., 2018. [**Modeling Alzheimer’s disease progression using deep recurrent neural networks**](https://doi.org/10.1109/prni.2018.8423955), PRNI, 2018.
 
 + Nguyen, M., He T., An L., Alexander D.C., Feng J., Yeo B.T.T., 2019. **Predicting Alzheimer’s disease progression
-using deep recurrent neural networks**, Neuroimage,2020.
+using deep recurrent neural networks**, under review.
 --- 
 ## Release Note
 The RNN model implementation is for Tadpole-Share project, which is 
