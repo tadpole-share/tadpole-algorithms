@@ -1,16 +1,14 @@
-### CBIG_RNN@Tadpole-Share
+## Reference
++ Nguyen, M., Sun, N., Alexander D.C., Feng J., Yeo B.T.T., 2018. [**Modeling Alzheimer’s disease progression using deep recurrent neural networks**](https://doi.org/10.1109/prni.2018.8423955), PRNI, 2018.
 
----
-#### Reference 
-[1] Nguyen, M., He T., An L., Alexander D.C., Feng J., Yeo B.T.T., 2019.
-Predicting Alzheimer’s disease progression using deep recurrent neural networks,
-under review. 
++ Nguyen, M., He T., An L., Alexander D.C., Feng J., Yeo B.T.T., 2019. **Predicting Alzheimer’s disease progression
+using deep recurrent neural networks**, under review.
 --- 
-#### Release Note
+## Release Note
 The RNN model implementation is for Tadpole-Share project, which is 
 aiming to gather top algorithms in Tadpole challenge 2017. 
 
-You could refer to [1] in Reference for more details about RNN model. 
+You could refer to Reference for more details about RNN model. 
 
 You could also visit https://github.com/ThomasYeoLab/CBIG/tree/master/stable_projects/predict_phenotypes/Nguyen2020_RNNAD for 
 original RNN implementation. 
@@ -21,17 +19,16 @@ three differences in CBIG_RNN@Tadpole-Share:
 2. We do not conduct K-fold cross-validation.
 3. The default features selection is different. 
 
-
 **Happy research!**
 
 --- 
-#### Usage 
+## Usage 
 
 The usage of CBIG_RNN@Tadpole-Share is same with other models in 
 Tadpole-Share,you could follow https://github.com/tadpole-share/jupyter/blob/master/cbig_rnn.ipynb
 
 --- 
-#### Contact 
+## Contact 
 
 You are welcomed to contact Lijun (anlijuncn@gmail.com) for 
 CBIG_RNN@Tadpole-Share if 
