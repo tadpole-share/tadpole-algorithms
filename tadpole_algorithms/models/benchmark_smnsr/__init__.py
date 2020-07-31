@@ -34,7 +34,7 @@ class BenchmarkSMNSR(TadpoleModel):
 
     TMP_FILE = "smnsr_tmp.p"
     PRE_CALCULATED_KNNSR = (
-        "https://drive.google.com/uc?id=1diTUWzctbl5MfpgoKBuGa-hvIXVgJcx7"
+        "https://drive.google.com/uc?id=18l4FBWEU0gNotvFnxvhk6_mEAdxPhpxT"
     )
 
     def __init__(
@@ -43,11 +43,11 @@ class BenchmarkSMNSR(TadpoleModel):
         challenge_modalities: bool = True,
         mode: str = "xgb",
         max_modalities: int = 1,
-        training_cv_folds: int = 10,
+        training_cv_folds: int = 5,
         forecast_min: str = "baseline",
         pretrained: bool = True,
         tmp_dir: str = None,
-        verbosity: int = 0,
+        verbosity: int = 1,
         n_cpus: int = None,
     ):
 
@@ -63,8 +63,7 @@ class BenchmarkSMNSR(TadpoleModel):
         self._tmp_dir = tmp_dir
 
     def train(self, train_df: pd.DataFrame):
-        if self._pretrained:
-            train_df = "TADPOLE_D1_D2.csv"
+
         data = TADPOLEData(
             data=train_df,
             modality_k=self._modality_k,
@@ -91,8 +90,10 @@ class BenchmarkSMNSR(TadpoleModel):
             max_modalities=self.max_modalities,
             forecast=True,
         )
+        if self._verbosity > 0:
+            print("Fitting model")
         self.adas_smnsr.fit(data.get_ptids())
-        if self._verbosity == 2:
+        if self._verbosity > 0:
             print("Model fitted")
 
     def predict(self, test_df):
