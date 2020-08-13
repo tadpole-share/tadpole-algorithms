@@ -20,7 +20,7 @@ def test_predict():
     data = TADPOLEData(
         data=TADPOLE_DATA, modality_path=None, modality_k=8, challenge_filter=True
     )
-    model = BenchmarkSMNSR(modality_k=2, training_cv_folds=2)
+    model = BenchmarkSMNSR(modality_k=8, training_cv_folds=2, mode="bypass_knnsr")
     model.train(data.df_raw)
     prediction = model.predict(data.df_raw)
     assert prediction.shape[0] > 0
