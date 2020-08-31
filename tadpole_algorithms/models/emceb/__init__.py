@@ -9,6 +9,7 @@ from scipy import stats
 from sklearn import svm
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
+from sklearn.compose import TransformedTargetRegressor
 from sklearn.utils import resample
 
 from tqdm.auto import tqdm
@@ -68,10 +69,11 @@ class EMCEB(TadpoleModel):
             ('scaler', StandardScaler()),
             ('classifier', svm.SVR(kernel='rbf', C=0.5, gamma='auto')),
         ])
-        self.ventricles_model = Pipeline([
+        ventricles_pipeline = Pipeline(steps=[
             ('scaler', StandardScaler()),
-            ('classifier', svm.SVR(kernel='rbf', C=0.5, gamma='auto')),
-        ])
+            ('classifier', svm.SVR(kernel='rbf', C=0.5, gamma='auto'))])
+
+        self.ventricles_model = TransformedTargetRegressor(regressor = ventricles_pipeline, transformer=StandardScaler())
 
         self.y_diagnosis = None
         self.y_adas = None
@@ -133,9 +135,9 @@ class EMCEB(TadpoleModel):
         df = df.sort_values(by=['RID', 'AGE'])
         
         if 'APOE4' in df.columns: 
-            df = df.drop(['EXAMDATE', 'AGE', 'PTGENDER', 'PTEDUCAT', 'APOE4'], axis=1)
+            df = df.drop(['EXAMDATE', 'PTGENDER', 'PTEDUCAT', 'APOE4'], axis=1)
         else: 
-            df = df.drop(['EXAMDATE', 'AGE', 'PTGENDER', 'PTEDUCAT'], axis=1)
+            df = df.drop(['EXAMDATE', 'PTGENDER', 'PTEDUCAT'], axis=1)
 
         # Ventricles_ICV = Ventricles/ICV_bl. So make sure ICV_bl is not zero to avoid division by zero
         icv_bl_median = df['ICV_bl'].median()
@@ -158,7 +160,7 @@ class EMCEB(TadpoleModel):
             # Drop columns found unimportant by feature importance ranking measure.
             selected_features = pd.read_csv(Path(__file__).parent / 'EMCEB_features.csv')['feature'].values.tolist()
             selected_features = selected_features[0:200]
-            selected_features += ['RID', 'Diagnosis', 'Ventricles_ICV']
+            selected_features += ['RID', 'Diagnosis', 'Ventricles_ICV', 'AGE']
             selected_features = set(selected_features)
             train_df = train_df.copy()[selected_features]
 
@@ -202,7 +204,7 @@ class EMCEB(TadpoleModel):
             Change_Ventricles_ICV = futures_df[predictor].shift(-1) - futures_df[predictor]
             Change_Age = futures_df['AGE'].shift(-1) - futures_df['AGE']
             Change_Age[Change_Age==0]=np.nan
-            futures_df["ChangePerYear_" + predictor] = Change_Ventricles_ICV/Change_Age
+            futures_df["ChangePerMonth_" + predictor] = Change_Ventricles_ICV/Change_Age/12
 
 
         # Drop each last row per patient
@@ -213,8 +215,26 @@ class EMCEB(TadpoleModel):
     def fill_nans_by_older_values(train_df):
         """Fill nans in feature matrix by older values (ffill), then by newer (bfill)"""
 
-        df_filled_nans = train_df.groupby('RID').fillna(method='ffill').fillna(method='bfill')
+        # train_idx = list(train_df.index.values)
+        # test_idx = list(test_df.index.values)
+        # overlap = len(set(train_idx).intersection(test_idx))
+        # print(overlap)
+
+        # if overlap:
+        df_filled_nans = train_df.groupby('RID').fillna(method='ffill')
         train_df[df_filled_nans.columns] = df_filled_nans
+        df_filled_nans = train_df.groupby('RID').fillna(method='bfill')
+        train_df[df_filled_nans.columns] = df_filled_nans
+
+            # df_filled_nans = test_df.groupby('RID').fillna(method='ffill').fillna(method='bfill')
+            # test_df[df_filled_nans.columns] = df_filled_nans
+        # else:
+        #     append_df = train_df.append(test_df)
+        #     df_filled_nans = append_df.groupby('RID').fillna(method='ffill').fillna(method='bfill')
+        #     append_df[df_filled_nans.columns] = df_filled_nans
+        #     train_df = append_df.iloc[train_idx] 
+        #     test_df = append_df.iloc[test_idx] 
+
         return train_df
 
     def train(self):
@@ -225,7 +245,7 @@ class EMCEB(TadpoleModel):
         futures = self.set_futures(train_df)
 
         # Not part of `preprocess` because it's needed for the futures.
-        train_df = train_df.drop(['RID'], axis=1)
+        train_df = train_df.drop(['RID', 'AGE'], axis=1)
 
         # Fill nans by mean of training set
         self.train_df_mean = train_df.mean()
@@ -249,7 +269,7 @@ class EMCEB(TadpoleModel):
 
         self.train_df_diagnosis, self.y_diagnosis = non_nan_y(train_df, futures['Future_Diagnosis'])
         self.train_df_adas, self.y_adas = non_nan_y(train_df, futures['Future_ADAS13'])
-        self.train_df_ventricles, self.y_ventricles = non_nan_y(train_df, futures['Future_Ventricles_ICV'])
+        self.train_df_ventricles, self.y_ventricles = non_nan_y(train_df, futures['ChangePerMonth_Ventricles_ICV'])
 
         logger.info("Training models")
         self.diagnosis_model.fit(self.train_df_diagnosis, self.y_diagnosis)
@@ -265,7 +285,7 @@ class EMCEB(TadpoleModel):
 
         test_df = self.test_df_processed
         rids = test_df['RID']
-        test_df = test_df.drop(['RID'], axis=1)
+        test_df = test_df.drop(['RID', 'AGE'], axis=1)
 
         # Fill nans by mean of training set
         test_df = test_df.fillna(self.train_df_mean)
@@ -273,7 +293,7 @@ class EMCEB(TadpoleModel):
 
         diag_probas = self.diagnosis_model.predict_proba(test_df)
         adas_prediction = self.adas_model.predict(test_df)
-        ventricles_prediction = self.ventricles_model.predict(test_df)
+        ventricles_change_prediction = self.ventricles_model.predict(test_df)
 
         if self.confidence_intervals:
             logger.info("Bootstrap adas")
@@ -310,9 +330,9 @@ class EMCEB(TadpoleModel):
             'ADAS13 50% CI lower': adas_prediction - adas_ci,
             'ADAS13 50% CI upper': adas_prediction + adas_ci,
 
-            'Ventricles_ICV': ventricles_prediction,
-            'Ventricles_ICV 50% CI lower': ventricles_prediction - ventricles_ci,
-            'Ventricles_ICV 50% CI upper': ventricles_prediction + ventricles_ci,
+            'Ventricles_ICV': test_df['Ventricles_ICV'] + ventricles_change_prediction,
+            'Ventricles_ICV 50% CI lower': test_df['Ventricles_ICV'] + ventricles_change_prediction - ventricles_ci,
+            'Ventricles_ICV 50% CI upper': test_df['Ventricles_ICV'] + ventricles_change_prediction + ventricles_ci,
         })
 
         # copy each row for each month
@@ -321,6 +341,10 @@ class EMCEB(TadpoleModel):
             df_copy = df.copy()
             df_copy['month'] = i
             df_copy['Forecast Date'] = df_copy['Forecast Date'].map(lambda x: add_months_to_str_date(x, i-1))
+
+            df_copy['Ventricles_ICV'] = test_df['Ventricles_ICV'] + ventricles_change_prediction * df_copy['month']
+            df_copy['Ventricles_ICV 50% CI lower'] = test_df['Ventricles_ICV'] + (ventricles_change_prediction - ventricles_ci) * df_copy['month']
+            df_copy['Ventricles_ICV 50% CI upper'] = test_df['Ventricles_ICV'] + (ventricles_change_prediction + ventricles_ci) * df_copy['month']
             new_df = new_df.append(df_copy)
 
         return new_df
