@@ -179,8 +179,16 @@ class EMCEB(TadpoleModel):
             
             train_df = train_df[test_df.columns]
             
+        # Fill nans by older values
         train_df = EMCEB.fill_nans_by_older_values(train_df)
-        test_df = EMCEB.fill_nans_by_older_values(test_df)
+        if (train == 'd1d2') & (test == 'd1d2'):    
+            test_df_copy = test_df.copy()
+            # get test set again from filled train set
+            test_df = train_df.groupby('RID').tail(1).copy()
+            # select all records where RID is in d4.
+            test_df = test_df[test_df['RID'].isin(test_df_copy['RID'].unique())]
+        else:
+            test_df = EMCEB.fill_nans_by_older_values(test_df)
 
         self.train_df_processed = train_df
         self.test_df_processed = test_df
@@ -215,25 +223,10 @@ class EMCEB(TadpoleModel):
     def fill_nans_by_older_values(train_df):
         """Fill nans in feature matrix by older values (ffill), then by newer (bfill)"""
 
-        # train_idx = list(train_df.index.values)
-        # test_idx = list(test_df.index.values)
-        # overlap = len(set(train_idx).intersection(test_idx))
-        # print(overlap)
-
-        # if overlap:
         df_filled_nans = train_df.groupby('RID').fillna(method='ffill')
         train_df[df_filled_nans.columns] = df_filled_nans
         df_filled_nans = train_df.groupby('RID').fillna(method='bfill')
         train_df[df_filled_nans.columns] = df_filled_nans
-
-            # df_filled_nans = test_df.groupby('RID').fillna(method='ffill').fillna(method='bfill')
-            # test_df[df_filled_nans.columns] = df_filled_nans
-        # else:
-        #     append_df = train_df.append(test_df)
-        #     df_filled_nans = append_df.groupby('RID').fillna(method='ffill').fillna(method='bfill')
-        #     append_df[df_filled_nans.columns] = df_filled_nans
-        #     train_df = append_df.iloc[train_idx] 
-        #     test_df = append_df.iloc[test_idx] 
 
         return train_df
 
