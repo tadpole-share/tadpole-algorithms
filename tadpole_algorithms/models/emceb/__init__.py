@@ -65,14 +65,14 @@ class EMCEB(TadpoleModel):
             ('scaler', StandardScaler()),
             ('classifier', svm.SVC(kernel='rbf', C=0.5, gamma='auto', class_weight='balanced', probability=True)),
         ])
-        self.adas_model = Pipeline([
+        adas_pipeline = Pipeline([
             ('scaler', StandardScaler()),
-            ('classifier', svm.SVR(kernel='rbf', C=0.5, gamma='auto')),
-        ])
+            ('classifier', svm.SVR(kernel='rbf', C=0.5, gamma='auto'))])
+        self.adas_model = TransformedTargetRegressor(regressor = adas_pipeline, transformer=StandardScaler())
+        
         ventricles_pipeline = Pipeline(steps=[
             ('scaler', StandardScaler()),
             ('classifier', svm.SVR(kernel='rbf', C=0.5, gamma='auto'))])
-
         self.ventricles_model = TransformedTargetRegressor(regressor = ventricles_pipeline, transformer=StandardScaler())
 
         self.y_diagnosis = None
