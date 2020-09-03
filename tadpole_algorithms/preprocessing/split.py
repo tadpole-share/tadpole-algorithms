@@ -13,10 +13,7 @@ def split_test_train_tadpole(df_train_test, df_eval, random_seed=0):
     Eval: D4 ADNI Data set
     """
 
-    # get only patient IDs with at least 2 rows per patient (required for test/eval set)
-    ids = df_train_test.groupby('RID').filter(lambda x: len(x) > 1)['RID'].unique()
-    
-    train_df = df_train_test[df_train_test['RID'].isin(ids)]
+    train_df = df_train_test.copy()
         
     # get last row per RID
     df_train_test = df_train_test.groupby('RID').tail(1)
@@ -38,10 +35,8 @@ def split_test_train_d3(df_train, df_test, df_eval, random_seed=0):
     Cross sectional dataset is used as test set
 
     """
-    # get only patient IDs with at least 2 rows per patient (required for test/eval set)
-    ids = df_train.groupby('RID').filter(lambda x: len(x) > 1)['RID'].unique()
-    
-    train_df = df_train[df_train['RID'].isin(ids)]
+
+    train_df = df_train.copy()
 
     # get D1 rows only
     train_df = train_df.loc[train_df['D2'] == 1]
