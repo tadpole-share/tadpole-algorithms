@@ -56,9 +56,15 @@ class BenchmarkSVM(TadpoleModel):
             train_df["Ventricles_ICV"] = train_df["Ventricles"].values / train_df["ICV_bl"].values
 
         # Select features
-        train_df = train_df[
-            ["RID", "Diagnosis", "ADAS13", "Ventricles_ICV", "Ventricles", "ICV_bl"]
-        ]
+        if "ADAS13" in train_df.columns:
+            train_df = train_df[
+                ["RID", "Diagnosis", "ADAS13", "Ventricles_ICV", "Ventricles", "ICV_bl"]
+            ]
+        else:
+            train_df = train_df[
+                ["RID", "Diagnosis", "Ventricles_ICV", "Ventricles", "ICV_bl"]
+            ]
+
 
         # Force values to numeric
         train_df = train_df.astype("float64", errors='ignore')
@@ -67,8 +73,12 @@ class BenchmarkSVM(TadpoleModel):
 
     def set_futures(self, train_df):
         # Set future value based on each row's next row, e.g. shift the column one up
-        for predictor in ["Diagnosis", "ADAS13", 'Ventricles_ICV']:
-            train_df["Future_" + predictor] = train_df[predictor].shift(-1)
+        if "ADAS13" in train_df.columns:
+            for predictor in ["Diagnosis", "ADAS13", 'Ventricles_ICV']:
+                train_df["Future_" + predictor] = train_df[predictor].shift(-1)
+        else:
+            for predictor in ["Diagnosis", 'Ventricles_ICV']:
+                train_df["Future_" + predictor] = train_df[predictor].shift(-1)
 
         # Drop each last row per patient
         train_df = train_df.drop(train_df.groupby('RID').tail(1).index.values)
@@ -79,14 +89,19 @@ class BenchmarkSVM(TadpoleModel):
         train_df = self.set_futures(train_df)
 
         # Select columns for training
-        X_train = train_df[["Diagnosis", "ADAS13", "Ventricles_ICV"]]
+        if "ADAS13" in train_df.columns:
+            X_train = train_df[["Diagnosis", "ADAS13", "Ventricles_ICV"]]
+        else:
+            X_train = train_df[["Diagnosis", "Ventricles_ICV"]]
 
         # fill NaNs with mean
         X_train = X_train.fillna(X_train.mean())
 
+        
         logger.info("Training models")
         self.train_model(self.diagnosis_model, train_df, X_train, "Future_Diagnosis")
-        self.train_model(self.adas_model, train_df, X_train, "Future_ADAS13")
+        if "ADAS13" in train_df.columns:
+            self.train_model(self.adas_model, train_df, X_train, "Future_ADAS13")
         self.train_model(self.ventricles_model, train_df, X_train, "Future_Ventricles_ICV")
 
     def predict(self, test_df):
@@ -102,38 +117,56 @@ class BenchmarkSVM(TadpoleModel):
         rids = test_df['RID']
         test_df = test_df.drop(['RID'], axis=1)
 
-        # Select same columns as for traning for testing
-        test_df = test_df[["Diagnosis", "ADAS13", "Ventricles_ICV"]]
+        # Select same columns as for training for testing
+        if "ADAS13" in test_df.columns:
+            test_df = test_df[["Diagnosis", "ADAS13", "Ventricles_ICV"]]
+        else:
+            test_df = test_df[["Diagnosis", "Ventricles_ICV"]]
 
         test_df = test_df.fillna(0)
 
         diag_probas = self.diagnosis_model.predict_proba(test_df)
-        adas_prediction = self.adas_model.predict(test_df)
 
-        adas_ci = np.zeros(len(adas_prediction))
+        if "ADAS13" in test_df.columns:
+            adas_prediction = self.adas_model.predict(test_df)
+            adas_ci = np.ones(len(adas_prediction))
 
         ventricles_prediction = self.ventricles_model.predict(test_df)
-        ventricles_ci = np.zeros(len(ventricles_prediction))
+        ventricles_ci = np.ones(len(ventricles_prediction)) * 0.05
 
         def add_months_to_str_date(strdate, months=1):
             return (datetime.strptime(strdate, '%Y-%m-%d') + relativedelta(months=months)).strftime('%Y-%m-%d')
 
-        df = pd.DataFrame.from_dict({
-            'RID': rids,
-            'month': 1,
-            'Forecast Date': list(map(lambda x: add_months_to_str_date(x, 1), exam_dates.tolist())),
-            'CN relative probability': diag_probas.T[0],
-            'MCI relative probability': diag_probas.T[1],
-            'AD relative probability': diag_probas.T[2],
+        if "ADAS13" in test_df.columns:
+            df = pd.DataFrame.from_dict({
+                'RID': rids,
+                'month': 1,
+                'Forecast Date': list(map(lambda x: add_months_to_str_date(x, 1), exam_dates.tolist())),
+                'CN relative probability': diag_probas.T[0],
+                'MCI relative probability': diag_probas.T[1],
+                'AD relative probability': diag_probas.T[2],
+                
+                'ADAS13': adas_prediction,
+                'ADAS13 50% CI lower': adas_prediction - adas_ci,
+                'ADAS13 50% CI upper': adas_prediction + adas_ci,
 
-            'ADAS13': adas_prediction,
-            'ADAS13 50% CI lower': adas_prediction - adas_ci,
-            'ADAS13 50% CI upper': adas_prediction + adas_ci,
+                'Ventricles_ICV': ventricles_prediction,
+                'Ventricles_ICV 50% CI lower': ventricles_prediction - ventricles_ci,
+                'Ventricles_ICV 50% CI upper': ventricles_prediction + ventricles_ci,
+            })
+        else:
+            df = pd.DataFrame.from_dict({
+                'RID': rids,
+                'month': 1,
+                'Forecast Date': list(map(lambda x: add_months_to_str_date(x, 1), exam_dates.tolist())),
+                'CN relative probability': diag_probas.T[0],
+                'MCI relative probability': diag_probas.T[1],
+                'AD relative probability': diag_probas.T[2],
 
-            'Ventricles_ICV': ventricles_prediction,
-            'Ventricles_ICV 50% CI lower': ventricles_prediction - ventricles_ci,
-            'Ventricles_ICV 50% CI upper': ventricles_prediction + ventricles_ci,
-        })
+                'Ventricles_ICV': ventricles_prediction,
+                'Ventricles_ICV 50% CI lower': ventricles_prediction - ventricles_ci,
+                'Ventricles_ICV 50% CI upper': ventricles_prediction + ventricles_ci,
+            })
 
         # copy each row for each month
         new_df = df.copy()

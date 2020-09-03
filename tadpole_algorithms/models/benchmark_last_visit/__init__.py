@@ -46,9 +46,15 @@ class BenchmarkLastVisit(TadpoleModel):
             train_df["Ventricles_ICV"] = train_df["Ventricles"].values / train_df["ICV_bl"].values
 
         # Select features
-        train_df = train_df[
-            ["RID", "Diagnosis", "ADAS13", "Ventricles_ICV", "Ventricles", "ICV_bl"]
-        ]
+        if "ADAS13" in train_df.columns:
+            train_df = train_df[
+                ["RID", "Diagnosis", "ADAS13", "Ventricles_ICV", "Ventricles", "ICV_bl"]
+            ]
+        else:
+            train_df = train_df[
+                ["RID", "Diagnosis", "Ventricles_ICV", "Ventricles", "ICV_bl"]
+            ]
+
 
         # Force values to numeric
         train_df = train_df.astype("float64", errors='ignore')
@@ -69,12 +75,17 @@ class BenchmarkLastVisit(TadpoleModel):
         test_df = self.preprocess(test_df)
         
         # Select same columns as for traning for testing
-        test_df = test_df[["RID", "Diagnosis", "ADAS13", "Ventricles_ICV"]]
+        if "ADAS13" in test_df.columns:
+            test_df = test_df[["RID", "Diagnosis", "ADAS13", "Ventricles", "ICV_bl", "Ventricles_ICV"]]
+        else:
+            test_df = test_df[["RID", "Diagnosis", "Ventricles", "ICV_bl", "Ventricles_ICV"]]
 
         # Default values
-        Ventricles_typical = 25000
-        Ventricles_broad_50pcMargin = 20000  # +/- (broad 50% confidence interval)
-        Ventricles_default_50pcMargin = 1000  # +/- (broad 50% confidence interval)
+        ICV_avg = 1400000 # in mm^3
+        Ventricles_typical = 25000 / ICV_avg
+        Ventricles_broad_50pcMargin = 20000 / ICV_avg # +/- (broad 50% confidence interval)
+        Ventricles_default_50pcMargin = 1000 /ICV_avg  # +/- (broad 50% confidence interval)
+
         ADAS13_typical = 12
         ADAS13_broad_50pcMargin = 10 
         ADAS13_default_50pcMargin = 1
@@ -88,15 +99,15 @@ class BenchmarkLastVisit(TadpoleModel):
         for i, subject in enumerate(subjects):
             diag_probas[i, int(test_df.loc[test_df["RID"] == subject, "Diagnosis"].dropna().values.tolist()[-1])-1] = 1
             
-            adas_prediction[i] = test_df.loc[test_df["RID"] == subject, "ADAS13"].dropna().values.tolist()[-1]
-            if adas_prediction[i] > 0: 
-                adas_ci[i] = ADAS13_default_50pcMargin
-                adas_ci[i] = ADAS13_default_50pcMargin
-            else:
-                # Subject has no history of ADAS13 measurement, so we'll take a
-                # typical score of 12 with wide confidence interval +/-10.
-                adas_prediction[i] = ADAS13_typical 
-                adas_ci[i] = ADAS13_broad_50pcMargin
+            if "ADAS13" in test_df.columns:
+                adas_prediction[i] = test_df.loc[test_df["RID"] == subject, "ADAS13"].dropna().values.tolist()[-1]
+                if adas_prediction[i] > 0: 
+                    adas_ci[i] = ADAS13_default_50pcMargin
+                else:
+                    # Subject has no history of ADAS13 measurement, so we'll take a
+                    # typical score of 12 with wide confidence interval +/-10.
+                    adas_prediction[i] = ADAS13_typical 
+                    adas_ci[i] = ADAS13_broad_50pcMargin
             
             try:
                 ventricles_prediction[i] = test_df.loc[test_df["RID"] == subject, "Ventricles_ICV"].dropna().values.tolist()[-1]    
@@ -119,22 +130,36 @@ class BenchmarkLastVisit(TadpoleModel):
             except ValueError:
                 return (datetime.strptime(strdate, '%d/%m/%Y') + relativedelta(months=months)).strftime('%d/%m/%Y')
 
-        df = pd.DataFrame.from_dict({
-            'RID': subjects,
-            'month': 1,
-            'Forecast Date': list(map(lambda x: add_months_to_str_date(x, 1), exam_dates.tolist())),
-            'CN relative probability': diag_probas_t[0],
-            'MCI relative probability': diag_probas_t[1],
-            'AD relative probability': diag_probas_t[2],
+        if "ADAS13" in test_df.columns:
+            df = pd.DataFrame.from_dict({
+                'RID': subjects,
+                'month': 1,
+                'Forecast Date': list(map(lambda x: add_months_to_str_date(x, 1), exam_dates.tolist())),
+                'CN relative probability': diag_probas_t[0],
+                'MCI relative probability': diag_probas_t[1],
+                'AD relative probability': diag_probas_t[2],
 
-            'ADAS13': adas_prediction,
-            'ADAS13 50% CI lower': adas_prediction - adas_ci, # To do: Set to zero if best-guess less than 1.
-            'ADAS13 50% CI upper': adas_prediction + adas_ci,
+                'ADAS13': adas_prediction,
+                'ADAS13 50% CI lower': adas_prediction - adas_ci, # To do: Set to zero if best-guess less than 1.
+                'ADAS13 50% CI upper': adas_prediction + adas_ci,
 
-            'Ventricles_ICV': ventricles_prediction,
-            'Ventricles_ICV 50% CI lower': ventricles_prediction - ventricles_ci,
-            'Ventricles_ICV 50% CI upper': ventricles_prediction + ventricles_ci,
-        })
+                'Ventricles_ICV': ventricles_prediction,
+                'Ventricles_ICV 50% CI lower': ventricles_prediction - ventricles_ci,
+                'Ventricles_ICV 50% CI upper': ventricles_prediction + ventricles_ci,
+            })
+        else:
+            df = pd.DataFrame.from_dict({
+                'RID': subjects,
+                'month': 1,
+                'Forecast Date': list(map(lambda x: add_months_to_str_date(x, 1), exam_dates.tolist())),
+                'CN relative probability': diag_probas_t[0],
+                'MCI relative probability': diag_probas_t[1],
+                'AD relative probability': diag_probas_t[2],
+
+                'Ventricles_ICV': ventricles_prediction,
+                'Ventricles_ICV 50% CI lower': ventricles_prediction - ventricles_ci,
+                'Ventricles_ICV 50% CI upper': ventricles_prediction + ventricles_ci,
+            })
 
         # copy each row for each month
         new_df = df.copy()
