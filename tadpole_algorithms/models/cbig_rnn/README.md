@@ -27,6 +27,7 @@ three differences in CBIG_RNN@Tadpole-Share:
 ``conda create -n tadpole_cbigrnn python==3.6.10``  
 ``conda activate tadpole_cbigrnn``  
 ``pip install -r requirements.txt``  
+
 The usage of CBIG_RNN@Tadpole-Share is same with other models in 
 Tadpole-Share,you could follow https://github.com/tadpole-share/jupyter/blob/master/cbig_rnn.ipynb
 
