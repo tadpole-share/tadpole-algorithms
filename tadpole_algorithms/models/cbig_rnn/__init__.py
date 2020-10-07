@@ -31,9 +31,9 @@ class CBIG_RNN(TadpoleModel):
                  clean_up=True,
                  **kwargs):
         # default model parameters for MinimalRNN model
-        self.lr = 1e-3  # learning rate
-        self.h_drop = 0.4  # hidden dropout rate
-        self.i_drop = 0.1  # input dropout rate
+        self.lr = 0.001883844  # learning rate
+        self.h_drop = 0.3  # hidden dropout rate
+        self.i_drop = 0.2  # input dropout rate
         self.h_size = 128  # hidden size
         self.nb_layers = 2  # nb_layers
         self.epochs = 100  # epoch
