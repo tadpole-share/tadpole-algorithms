@@ -1,0 +1,4 @@
+rpy2 == 3.3.5
+
+# install R from https://www.r-project.org/
+# once R installed install FRESA.CAD package by just running the install_FRESACAD.R file

@@ -1,0 +1,5 @@
+install.packages("devtools")
+library(devtools)
+install_version("Rcpp", version = "1.0.3", repos = "http://cran.r-project.org")
+install_github("joseTamezPena/FRESA.CAD")
+library(FRESA.CAD)
