@@ -48,7 +48,7 @@ terminado==0.8.3
 testpath==0.4.4
 threadpoolctl==2.1.0
 #torch==1.6.0
-torchvision==0.7.0
+#torchvision==0.7.0
 traitlets==4.3.3
 wcwidth==0.2.5
 webencodings==0.5.1
