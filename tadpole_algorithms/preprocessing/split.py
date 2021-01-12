@@ -59,9 +59,6 @@ def split_test_train_parelsnoer(df_train, df_test, df_eval, random_seed=0):
     # Get train set
     train_df = df_train.copy()
 
-    # get D1 rows only ## LOTTE, CHECK? I Don't think this is needed.
-    train_df = train_df.loc[train_df['D2'] == 0]
-
     # Drop ADAS13 column since this column is not in test_df and therefor no prediction can be done for ADAS13
     train_df = train_df.drop(['ADAS13'], axis=1)
     
