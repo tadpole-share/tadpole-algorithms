@@ -23,7 +23,9 @@ def main(train_df, test_df,IntermediateDataFolder,n_boot):
     PrepareData.main(train_df,test_df)
     print ('Step 1 / 6 Complete. Selecting Features.')
     ## Feature Selection
-    subprocess.call ("/usr/bin/Rscript --vanilla ./SelectFeatures.R", shell=True)
+    
+    #subprocess.call ("/usr/bin/Rscript --vanilla ./SelectFeatures.R", shell=True)
+    subprocess.call('Rscript SelectFeatures.R')
     print ('Step 2 / 6 Complete. Training DEBM.')
     ## Estimate Disease State with DEBM
     EstimateDiseaseState.main(0)
@@ -32,7 +34,7 @@ def main(train_df, test_df,IntermediateDataFolder,n_boot):
     os.chdir(str_exp)
     subprocess.call ("/usr/bin/Rscript --vanilla ./PredictFeatures.R", shell=True)
     print ('Step 4 / 6 Complete. Training SVM classifier.')
-    os.system('python3 Classify.py')
+    os.system('python Classify.py')
     print ('Step 5 / 6 Complete. Predicting ADAS and Ventricle values.')     
     subprocess.call ("/usr/bin/Rscript --vanilla ./PredictADASVentricles.R", shell=True)
     if n_boot==0:
@@ -48,7 +50,7 @@ def main(train_df, test_df,IntermediateDataFolder,n_boot):
 
     X['RID'] = np.zeros(60*ToP.shape[0])
     
-    count=-1;
+    count=-1
     for i in range(0,(60*ToP.shape[0]),60):
         count=count+1
         X.loc[i:i+60,'RID'] = ToP.values[count,0]
